@@ -21,14 +21,14 @@ This project compares **Diffusion Models (DDPM)** and **TimeGAN** for generating
 3. **TimeGAN** – `timegan_single_asset.py`  
    - Trains TimeGAN per asset
    - Generates synthetic sequences with temporal dependencies
-4. **Evaluation** (copied from smallDataset)
+4. **Evaluation**
    - RP / GAF image generation
    - CNN classifier (real vs fake)
    - DTW distances
    - Predictive Score (Train-on-Synthetic, Test-on-Real)
 
-## Key idea
+## Visualizations
 
-- Diffusion: excellent **distributional realism**, weaker **predictive structure**  
-- TimeGAN: better **temporal modeling**, but visuals can be less perfect  
-- Asset-dependence: strong TimeGAN advantage on AAPL; weaker on BTC and index-level data.
+Real vs diffusion overlay plots are stored in:
+`bigDataset/real_vs_diffusion_images/`
+
