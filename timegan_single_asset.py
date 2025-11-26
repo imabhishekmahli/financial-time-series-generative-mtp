@@ -12,14 +12,14 @@ from torch.utils.data import Dataset, DataLoader
 # ============ CONFIG ============
 
 ASSET_NAME_DEFAULT = "sp500"   # override with argv[1]
-H_DIM = 32
-Z_DIM = 16
-NUM_LAYERS = 1
+H_DIM = 64
+Z_DIM = 32
+NUM_LAYERS = 2
 BATCH_SIZE = 32
 
-EPOCHS_AUTO = 10
-EPOCHS_SUP  = 10
-EPOCHS_ADV  = 20
+EPOCHS_AUTO = 20
+EPOCHS_SUP  = 20
+EPOCHS_ADV  = 40
 
 LR = 1e-3
 DEVICE = "cpu"
@@ -199,25 +199,30 @@ def train_timegan_for_asset(asset_name):
         print(f"[{asset_name}] Sup Epoch {epoch+1}/{EPOCHS_SUP} - Sup Loss: {total_loss/n_samples:.6f}")
 
     # ---- Phase 3: Adversarial / Joint ----
+        # =====================
     print("\n[Phase 3] Adversarial / joint training...")
     for epoch in range(EPOCHS_ADV):
         for x in loader:
             x = x.to(DEVICE)
             B, T, _ = x.shape
 
-            # --- Train Discriminator ---
+            # ------------ Train Discriminator (D) ------------
             embedder.eval()
             generator.eval()
             supervisor.eval()
+            recovery.eval()
             discriminator.train()
 
-            e_real = embedder(x).detach()
-            z_noise = torch.randn(B, T, Z_DIM, device=DEVICE)
-            e_hat = generator(z_noise).detach()
-            h_hat = supervisor(e_hat).detach()
+            # Compute latent sequences WITHOUT tracking gradients for E/G/S
+            with torch.no_grad():
+                e_real = embedder(x)                        # [B,T,Z]
+                z_noise = torch.randn(B, T, Z_DIM, device=DEVICE)
+                e_hat = generator(z_noise)                  # [B,T,Z]
+                h_hat = supervisor(e_hat)                   # [B,T,Z]
 
-            d_real = discriminator(e_real)
-            d_fake = discriminator(h_hat)
+            # D sees detached latents
+            d_real = discriminator(e_real.detach())         # real latent
+            d_fake = discriminator(h_hat.detach())          # synthetic latent
 
             d_loss_real = bce_logits(d_real, torch.ones_like(d_real))
             d_loss_fake = bce_logits(d_fake, torch.zeros_like(d_fake))
@@ -225,31 +230,45 @@ def train_timegan_for_asset(asset_name):
 
             optD.zero_grad()
             d_loss.backward()
+            # optional: clip D gradients
+            torch.nn.utils.clip_grad_norm_(discriminator.parameters(), 1.0)
             optD.step()
 
-            # --- Train G, S, E, R ---
+            # ------------ Train G, S, E, R ------------
             embedder.train()
             generator.train()
             supervisor.train()
             recovery.train()
             discriminator.eval()
 
+            # 1) Adversarial loss for G+S
             z_noise = torch.randn(B, T, Z_DIM, device=DEVICE)
-            e_hat = generator(z_noise)
-            h_hat = supervisor(e_hat)
-            d_fake_for_g = discriminator(h_hat)
+            e_hat = generator(z_noise)                      # [B,T,Z]
+            h_hat = supervisor(e_hat)                      # [B,T,Z]
+            d_fake_for_g = discriminator(h_hat)            # [B]
             g_adv_loss = bce_logits(d_fake_for_g, torch.ones_like(d_fake_for_g))
 
+            # 2) Supervised loss on real latent (temporal consistency)
             s_loss = supervised_loss(supervisor, embedder, x)
+
+            # 3) Reconstruction loss (autoencoder)
             ae_loss = autoencoder_loss(embedder, recovery, x)
 
-            g_loss = g_adv_loss + 10 * s_loss + ae_loss
+            # Combine (you can keep your 5 * s_loss etc.)
+            g_loss = g_adv_loss + 5 * s_loss + ae_loss
 
             optG.zero_grad()
             optS.zero_grad()
             optE.zero_grad()
             optR.zero_grad()
+
             g_loss.backward()
+            # gradient clipping for stability
+            torch.nn.utils.clip_grad_norm_(generator.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(supervisor.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(embedder.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(recovery.parameters(), 1.0)
+
             optG.step()
             optS.step()
             optE.step()
