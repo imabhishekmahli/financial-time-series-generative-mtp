@@ -1,0 +1,29 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual envs
+venv/
+.env/
+.venv/
+
+# Data / numpy / models
+*.npy
+*.npz
+*.pth
+*.pt
+*.ckpt
+
+# Images / plots (optional – if you want to keep repo light)
+*.png
+*.jpg
+*.jpeg
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE stuff
+.vscode/
+.idea/
