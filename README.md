@@ -33,29 +33,59 @@ This framework introduces a **novel hybrid generative architecture** that combin
 
 ---
 
-## 🛠️ System Architecture Pipeline
+### Mathematical Formulation Summary
 
-┌───────────────┐
-          │ Financial Data│
-          └───────┬───────┘
-                  │ Log Returns & Normalization
-                  ▼
-        ┌───────────────────┐
-        │   Preprocessing   │
-        └────┬──────────┬───┘
-             │          │
-    ┌────────┴──┐    ┌──┴──────────┐
-    │ GAN Module│    │  Diffusion  │
-    │  (Local)  │    │  (Global)   │
-    └────────┬──┘    └──┬──────────┘
-             │          │
-             └────┬─────┘
-                  │ Weighted Hybrid Fusion
-                  ▼
-        ┌───────────────────┐
-        │ Refinement Module ◄─── Baseline Forecasts (LSTM/ARIMA)
-        └────┬──────────────┘
-             │
-             ▼
-  ┌─────────────────────────────────────────┐
-  │ FINAL OUTPUT: Synthetic Data + Forecast │
+The forward diffusion process corrupts data $x_0$ with Gaussian noise via a schedule $\beta_t$:
+$$q(x_{t}|x_{t-1})=\mathcal{N}(x_{t};\sqrt{1-\beta_{t}}x_{t-1},\beta_{t}I)$$
+
+The forecast refinement module optimizes an initial forecast $\tilde{y}$ by minimizing a diffusion-prior energy function regulated by parameter $\lambda$:
+$$E(y)=-log\,p_{\theta}(y)+\lambda R(y,\tilde{y})$$
+
+---
+
+## 📊 Performance & Key Findings
+
+### 1. Forecasting Performance Comparison
+The proposed hybrid model achieves the lowest error rates across traditional and deep learning baselines:
+
+| Model | RMSE ↓ | MAE ↓ |
+| :--- | :---: | :---: |
+| ARIMA | 0.085 | 0.062 |
+| LSTM | 0.061 | 0.045 |
+| GAN | 0.058 | 0.042 |
+| Diffusion (DDPM) | 0.072 | 0.051 |
+| TSDiff | 0.054 | 0.039 |
+| **Hybrid (Proposed)** | **0.047** | **0.034** |
+
+### 2. Effect of Forecast Refinement
+Applying the diffusion refinement prior yields a consistent reduction in baseline model prediction error without requiring retraining:
+
+| Baseline Model | Before Refinement (RMSE) | After Refinement (RMSE) |
+| :--- | :---: | :---: |
+| LSTM | 0.061 | **0.052** |
+| ARIMA | 0.085 | **0.070** |
+
+### 3. Synthetic Data Quality Evaluation
+Evaluated using Dynamic Time Warping (DTW) and Train-on-Synthetic, Test-on-Real (TSTR) accuracy:
+
+| Model | DTW ↓ | TSTR Accuracy ↑ |
+| :--- | :---: | :---: |
+| GAN | 0.42 | 0.78 |
+| Diffusion | 0.35 | 0.72 |
+| **Hybrid (Ours)** | **0.28** | **0.83** |
+
+### 4. Ablation Study
+Validating the performance contribution of individual model components:
+
+| Model Variant | RMSE ↓ |
+| :--- | :---: |
+| GAN Only | 0.058 |
+| Diffusion Only | 0.072 |
+| Hybrid (No Refinement) | 0.051 |
+| **Hybrid (Proposed full framework)** | **0.047** |
+
+---
+
+
+
+  
