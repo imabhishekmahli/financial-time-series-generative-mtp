@@ -85,15 +85,6 @@ Validating the performance contribution of individual model components:
 | **Hybrid (Proposed full framework)** | **0.047** |
 
 ---
-@mastersthesis{kumar2026selfguided,
-  author       = {Abhishek Kumar},
-  title        = {A Self-Guided Hybrid Diffusion GAN Framework for Financial Time Series Modeling with Forecast Refinement},
-  school       = {Indian Institute of Technology Tirupati},
-  year         = {2026},
-  month        = {April},
-  type         = {Master of Technology Thesis},
-  address      = {Tirupati, Andhra Pradesh, India}
-}
 
 
   
